@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>質感ギャラリーアプリ</title>
+    <style>
+        /* 全体のリセットと基本スタイル */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px; /* スマホ風の縦長画面に設定 */
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        /* 検索・ヘッダー部分 */
+        .header {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            background: #fff;
+            z-index: 10;
+        }
+        .search-bar-container {
+            display: flex;
+            align-items: center;
+            background: #f0f0f0;
+            border-radius: 24px;
+            padding: 8px 16px;
+        }
+        .menu-button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .search-input {
+            flex: 1;
+            border: none;
+            background: none;
+            font-size: 16px;
+            outline: none;
+        }
+        .profile-icon {
+            width: 32px;
+            height: 32px;
+            background: #ccc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        /* 絞り込みドロップダウンメニュー */
+        .filter-menu {
+            position: absolute;
+            top: 68px;
+            left: 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 150px;
+            display: none; /* 初期状態は非表示 */
+            flex-direction: column;
+            z-index: 20;
+        }
+        .filter-menu.active {
+            display: flex;
+        }
+        .filter-item {
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            text-align: left;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .filter-item:last-child {
+            border-bottom: none;
+        }
+        .filter-item:hover {
+            background: #f9f9f9;
+        }
+
+        /* 画像ギャラリー（レンガ風・グリッド配置） */
+        .gallery-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 横に3個並べる */
+            gap: 4px;
+        }
+        .gallery-item {
+            aspect-ratio: 1 / 1; /* 正方形 */
+            background: #e0e0e0;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            transition: opacity 0.2s;
+        }
+        .gallery-item:hover {
+            opacity: 0.8;
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 詳細モーダル（ポップアップ） */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .modal-img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .modal-info {
+            text-align: left;
+            line-height: 1.6;
+        }
+        .modal-info h3 {
+            margin-bottom: 8px;
+            color: #111;
+        }
+
+        /* フッター（ノート最下部の空欄用） */
+        .footer {
+            height: 50px;
+            border-top: 1px solid #eee;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header class="header">
+        <div class="search-bar-container">
+            <button class="menu-button" id="menuBtn" title="絞り込みメニュー">☰</button>
+            <input type="text" class="search-input" id="searchInput" placeholder="検索または絞り込み...">
+            <div class="profile-icon">👤</div>
+        </div>
+        
+        <div class="filter-menu" id="filterMenu">
+            <button class="filter-item" data-tag="すべて">すべて</button>
+            <button class="filter-item" data-tag="モチモチ">モチモチ</button>
+            <button class="filter-item" data-tag="フワフワ">フワフワ</button>
+            <button class="filter-item" data-tag="ザクザク">ザクザク</button>
+            <button class="filter-item" data-tag="シュワシュワ">シュワシュワ</button>
+        </div>
+    </header>
+
+    <main class="gallery-container">
+        <div class="gallery-grid" id="galleryGrid">
+            </div>
+    </main>
+
+    <footer class="footer">
+        質感検索アプリ Mockup
+    </footer>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-content">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <img src="" alt="詳細画像" class="modal-img" id="modalImg">
+        <div class="modal-info">
+            <h3 id="modalTag">質感: </h3>
+            <p id="modalLoc">📍 位置情報: </p>
+            <p id="modalDesc" style="margin-top: 8px; color: #666; font-size: 14px;">ここに写真の詳細な説明などが入ります。</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // サンプルデータ（画像URL、質感タグ、位置情報、説明文）
+    const sampleData = [
+        { id: 1, tag: 'モチモチ', loc: '大分県由布市', desc: '焼きたてのお餅', img: 'https://picsum.photos/id/1080/300/300' },
+        { id: 2, tag: 'フワフワ', loc: '別府市 カフェ', desc: 'シフォンケーキ', img: 'https://picsum.photos/id/1025/300/300' },
+        { id: 3, tag: 'ザクザク', loc: '大分市 駅前', desc: '揚げたてのフライドチキン', img: 'https://picsum.photos/id/1062/300/300' },
+        { id: 4, tag: 'シュワシュワ', loc: '炭酸温泉', desc: '温泉の気泡', img: 'https://picsum.photos/id/1043/300/300' },
+        { id: 5, tag: 'モチモチ', loc: '由布院うどん', desc: 'コシのある手打ちうどん', img: 'https://picsum.photos/id/429/300/300' },
+        { id: 6, tag: 'フワフワ', loc: 'くじゅう高原', desc: '青空に浮かぶ入道雲', img: 'https://picsum.photos/id/1057/300/300' },
+        { id: 7, tag: 'ザクザク', loc: '地元のクッキー屋', desc: '手作りチョコチップクッキー', img: 'https://picsum.photos/id/556/300/300' },
+        { id: 8, tag: 'シュワシュワ', loc: 'カフェバー', desc: '冷たいソーダ水', img: 'https://picsum.photos/id/134/300/300' },
+        { id: 9, tag: 'モチモチ', loc: '和菓子店', desc: 'みたらし団子', img: 'https://picsum.photos/id/619/300/300' }
+    ];
+
+    const menuBtn = document.getElementById('menuBtn');
+    const filterMenu = document.getElementById('filterMenu');
+    const galleryGrid = document.getElementById('galleryGrid');
+    const searchInput = document.getElementById('searchInput');
+
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalClose = document.getElementById('modalClose');
+    const modalImg = document.getElementById('modalImg');
+    const modalTag = document.getElementById('modalTag');
+    const modalLoc = document.getElementById('modalLoc');
+    const modalDesc = document.getElementById('modalDesc');
+
+    // 1. ギャラリーの初期表示
+    function renderGallery(items) {
+        galleryGrid.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'gallery-item';
+            div.innerHTML = `<img src="${item.img}" alt="${item.tag}">`;
+            
+            // 画像タップ時のイベント（詳細表示）
+            div.addEventListener('click', () => openModal(item));
+            galleryGrid.appendChild(div);
+        });
+    }
+
+    // 2. 絞り込みメニューの開閉
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        filterMenu.classList.toggle('active');
+    });
+
+    // 画面外をクリックしたらメニューを閉じる
+    document.addEventListener('click', () => {
+        filterMenu.classList.remove('active');
+    });
+
+    // 3. 質感タグでのフィルタリング
+    filterMenu.addEventListener('click', (e) => {
+        if (e.target.classList.contains('filter-item')) {
+            const selectedTag = e.target.getAttribute('data-tag');
+            searchInput.value = selectedTag === 'すべて' ? '' : selectedTag;
+            
+            const filtered = selectedTag === 'すべて' 
+                ? sampleData 
+                : sampleData.filter(item => item.tag === selectedTag);
+            
+            renderGallery(filtered);
+        }
+    });
+
+    // 4. モーダル（詳細画面）の開閉
+    function openModal(item) {
+        modalImg.src = item.img;
+        modalTag.textContent = `質感: 【${item.tag}】`;
+        modalLoc.textContent = `📍 位置情報: ${item.loc}`;
+        modalDesc.textContent = item.desc;
+        modalOverlay.classList.add('active');
+    }
+
+    modalClose.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.classList.remove('active');
+        }
+    });
+
+    // 初回読み込み時に全画像を表示
+    renderGallery(sampleData);
+</script>
+
+</body>
+</html>
